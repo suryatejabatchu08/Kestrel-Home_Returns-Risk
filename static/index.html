@@ -1,0 +1,58 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kestrel - pre-dispatch return check</title>
+<style>
+:root{--bg:#f3f5f7;--card:#fff;--ink:#14212b;--mute:#5d6b76;--line:#d5dce2;--acc:#0d5c63;--hot:#b3261e;--ok:#2e6b3a}
+@media(prefers-color-scheme:dark){:root{--bg:#10171c;--card:#18222a;--ink:#e6edf1;--mute:#93a3ae;--line:#2b3943;--acc:#5fc0c8;--hot:#ff8a80;--ok:#8fd19a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+@media(max-width:760px){main{grid-template-columns:1fr}}
+h1{grid-column:1/-1;margin:0;font:600 22px/1.3 Georgia,serif}h1 small{display:block;font:14px "Segoe UI",sans-serif;color:var(--mute);margin-top:4px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:18px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 3px}
+input,select{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{font:inherit;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:4px;padding:9px 14px;cursor:pointer}
+button.ghost{background:none;color:var(--acc);padding:5px 10px;font-size:13px}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--acc);outline-offset:1px}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.big{font:600 44px/1 Georgia,serif}.hot{color:var(--hot)}.ok{color:var(--ok)}
+.bar{height:8px;background:var(--line);border-radius:4px;margin:10px 0;position:relative}.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--acc)}
+.bar b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+ul{padding-left:18px;margin:8px 0}li{margin:4px 0}.up{color:var(--hot)}.down{color:var(--ok)}
+.note{font-size:13px;color:var(--mute)}.err{color:var(--hot)}
+</style></head><body><main>
+<h1>Pre-dispatch return check<small>Type in an order as the warehouse sees it before dispatch. Nothing is stored or sent anywhere.</small></h1>
+<section aria-label="Order">
+<div class="presets"><button class="ghost" type="button" data-p="risky">Example: risky order</button><button class="ghost" type="button" data-p="safe">Example: safe order</button></div>
+<div class="row"><div><label for="sku">Product (SKU)</label><select id="sku"></select></div>
+<div><label for="payment_mode">Payment</label><select id="payment_mode"><option value="prepaid_upi">UPI</option><option value="prepaid_card">Card</option><option value="cod">Cash on delivery</option><option value="emi">EMI</option></select></div></div>
+<div class="row"><div><label for="sales_channel">Channel</label><select id="sales_channel"><option>app</option><option>web</option><option>marketplace</option><option value="partner_outlet">partner outlet</option></select></div>
+<div><label for="shield_member">Shield member?</label><select id="shield_member"><option value="N">No</option><option value="Y">Yes</option></select></div></div>
+<div class="row"><div><label for="discount_pct">Discount %</label><input id="discount_pct" type="number" min="0" max="90"></div>
+<div><label for="promised_delivery_days">Promised delivery (days)</label><input id="promised_delivery_days" type="number" min="0" max="60"></div></div>
+<div class="row"><div><label for="customer_prior_orders">Customer's earlier orders</label><input id="customer_prior_orders" type="number" min="0"></div>
+<div><label for="customer_prior_returns">...of which returned</label><input id="customer_prior_returns" type="number" min="0"></div></div>
+<div class="row"><div><label for="is_gift">Gift?</label><select id="is_gift"><option value="N">No</option><option value="Y">Yes</option></select></div>
+<div><label for="delivery_pincode">Pincode (000000 if none)</label><input id="delivery_pincode" inputmode="numeric"></div></div>
+<p><button id="go" type="button">Check this order</button></p></section>
+<section aria-live="polite" id="out"><p class="note">The answer appears here: a return-risk figure, what to do, and the reasons in plain words.</p></section>
+</main><script>
+const $=id=>document.getElementById(id),F=["sku","payment_mode","sales_channel","shield_member","discount_pct","promised_delivery_days","customer_prior_orders","customer_prior_returns","is_gift","delivery_pincode"];
+const SKUS="AF-01 AF-02 AF-03 MG-01 MG-02 MG-03 WP-01 WP-02 WP-03 RV-01 RV-02 RV-03 IC-01 IC-02 IC-03 CF-01 CF-02 CF-03 RH-01 RH-02 RH-03".split(" ");
+$("sku").innerHTML=SKUS.map(s=>`<option>KH-${s}</option>`).join("");
+const P={risky:{sku:"KH-RV-02",payment_mode:"cod",sales_channel:"marketplace",shield_member:"Y",discount_pct:22,promised_delivery_days:8,customer_prior_orders:4,customer_prior_returns:2,is_gift:"N",delivery_pincode:"400151"},
+safe:{sku:"KH-CF-01",payment_mode:"prepaid_upi",sales_channel:"app",shield_member:"N",discount_pct:5,promised_delivery_days:3,customer_prior_orders:1,customer_prior_returns:0,is_gift:"N",delivery_pincode:"440365"}};
+const fill=k=>F.forEach(f=>$(f).value=P[k][f]);fill("risky");
+document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{fill(b.dataset.p);go()});
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+async function go(){const rec={};F.forEach(f=>rec[f]=$(f).value);const o=$("out");o.innerHTML='<p class="note">Checking...</p>';
+ try{const r=await fetch("/predict",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(rec)});const j=await r.json();
+  if(!r.ok){o.innerHTML=`<p class="err"><b>${esc(j.error)}</b></p><ul>${(j.problems||[]).map(p=>`<li>${esc(p)}</li>`).join("")}</ul>`;return}
+  const pc=Math.round(j.return_probability*100);
+  o.innerHTML=`<div class="big ${j.risk_flag?"hot":"ok"}">${pc}%</div><div>chance this order comes back &middot; ${j.risk_flag?"<b class='hot'>call before dispatch</b>":"<b class='ok'>ship normally</b>"}</div>
+  <div class="bar"><i style="width:${Math.min(100,pc)}%"></i><b style="left:${j.threshold*100}%" title="call threshold"></b></div>
+  <p>${esc(j.recommended_action)}</p><p class="note">Expected net if called: Rs ${j.expected_net_rs_if_called} (cost Rs 45 per call; return costs Rs 1,150).</p>
+  <h2 style="font-size:15px;margin:14px 0 0">Why</h2><ul>${j.reasons.map(x=>`<li class="${x.effect=="raises risk"?"up":"down"}">${esc(x.text)} &mdash; ${x.effect}</li>`).join("")}</ul>
+  ${j.warnings.map(w=>`<p class="note">Note: ${esc(w)}</p>`).join("")}<p class="note">${esc(j.caveat)}</p>`;
+ }catch(e){o.innerHTML='<p class="err">Could not reach the service. Is <code>python app.py</code> still running?</p>'}}
+$("go").onclick=go;
+</script></body></html>
