@@ -1,0 +1,4 @@
+data/
+predictions.csv
+.venv/
+__pycache__/
